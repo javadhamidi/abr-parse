@@ -1,13 +1,44 @@
 
-abr = open("Snatti brushpack.abr", "rb")
+from struct import unpack
+from binascii import unhexlify
 
-VERSION = int.from_bytes(abr.read(2), byteorder='big')
-SUBVERSION = int.from_bytes(abr.read(2), byteorder='big')
+# https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577411_21585
+KEY_OSTYPE = {
+    b'obj ': 'Reference Structure',
+    b'Objc': 'Object Descriptor',
+    b'VlLs': 'List structure',
+    b'doub': 'Double structure',
+    b'UntF': 'Unit float structure',
+    b'TEXT': 'String',
+    b'enum': 'Enumerated',
+    b'long': 'Integer',
+    b'comp': 'Large Integer',
+    b'bool': 'Boolean structure',
+    b'GlbO': 'GlobalObject (same as Descriptor)',
+    b'type': 'Class',
+    b'GlbC': 'Class',
+    b'alis': 'Alias structure',
+    b'tdta': 'Raw Data'
+}
 
-print(f"INFO: Brush version {VERSION}.{SUBVERSION} found.")
+UNITS_UNTF = {
+    b'#Ang': 'degrees (angle)',
+    b'#Rsl': 'density (base per inch)',
+    b'#Rlt': 'distance (base 72ppi)',
+    b'#Nne': '(units none)',
+    b'#Prc': 'percent',
+    b'#Pxl': 'pixels'
+}
 
-if VERSION != 6 or SUBVERSION != 2:
-    exit("ERROR: Brush version is not supported, quitting!")
+BRUSH_PROPERTY = {
+    'Dmtr': 'Diameter',
+    'Hrdn': 'Hardness',
+    'Angl': 'Angle',
+    'Rndn': 'Roundness',
+    'Spcn': 'Spacing',
+    'Intr': 'Interface'
+}
+
 
 
 def unicode_string(length):
@@ -17,6 +48,66 @@ def unicode_string(length):
         string += chr(int.from_bytes(abr.read(2), byteorder='big'))
     
     return string
+
+
+def pascal_string():
+    str_len = int.from_bytes(abr.read(1), byteorder='big')
+    if str_len == 0:
+        str_len = 4
+    return abr.read(str_len).decode("utf-8")
+
+
+def get_double():
+    return unpack('d', abr.read(8)[::-1])[0]
+
+
+def read_descriptor():
+    key = abr.read(4)
+    desc_type = KEY_OSTYPE[key]
+
+    if key == b'VlLs':  # list
+        list_len = int.from_bytes(abr.read(4), byteorder='big')
+        print("Found list of length", list_len, f"({desc_type})")
+        read_descriptor()
+
+    elif key == b'TEXT':
+        print(unicode_string(int.from_bytes(abr.read(4), byteorder='big')), f"({desc_type})")
+        print("UNKNOWN DATA!!!:", abr.read(3))
+
+    elif key == b'UntF':
+        units = UNITS_UNTF[abr.read(4)]
+        result = f"{get_double()} {units} ({desc_type})"
+        if abr.read(4) != b'\x00\x00\x00\x00':
+            print("UNKNOWN DATA!!!")
+        return result 
+
+    elif key == b'Objc':
+        print("UNKNOWN DATA!!!:", abr.read(9))
+        print(pascal_string(), f"({desc_type})")
+        print("UNKNOWN DATA!!!:", abr.read(7))
+
+
+    elif key == b'bool':
+        result = str(ord(abr.read(1)) == True) + f" ({desc_type})"
+        if abr.read(3) != b'\x00\x00\x00':
+            print("UNKNOWN DATA!!!")
+        return result
+
+    else:
+        print("WARNING:", key, "type not handled!")
+
+
+
+
+abr = open("Snatti brushpack.abr", "rb")
+
+version = int.from_bytes(abr.read(2), byteorder='big')
+subversion = int.from_bytes(abr.read(2), byteorder='big')
+
+print(f"INFO: Brush version {version}.{subversion} found.")
+
+if version != 6 or subversion != 2:
+    exit("ERROR: Brush version is not supported, quitting!")
 
 
 def parse():
@@ -61,10 +152,14 @@ def parse():
 
         print("INFO: Photoshop patterns resource signature found!")
 
-        TOTAL_LEN = int.from_bytes(abr.read(4), byteorder='big')
+        TOTAL_LEN = int.from_bytes(abr.read(4), byteorder='big') - 14  # UNKNOWN amount of padding, guessing -14???
         print("\tTotal length of all pattern data:", TOTAL_LEN)
 
         while TOTAL_LEN > 0:
+            print("""
+                // NEW PATTERN //
+            """)
+
             PATT_LEN = int.from_bytes(abr.read(4), byteorder='big')
             print("\tCurrent pattern data length:", PATT_LEN,
                 "bytes (approx.", int(PATT_LEN / 1000), "KB)")
@@ -135,7 +230,7 @@ def parse():
                 # is array written
                 if abr.read(4) != b'\x00\x00\x00\x00':
                     VMA_LEN = int.from_bytes(abr.read(4), byteorder='big')
-                    print(VMA_LEN)
+                    print("Channel", i)
                     if VMA_LEN != 0:
                         print("\tVMA Pixel Depth:", int.from_bytes(
                             abr.read(4), byteorder='big'))
@@ -158,14 +253,96 @@ def parse():
                         abr.read(VMA_LEN - 23)
 
             TOTAL_LEN -= PATT_LEN
-            print(PATT_LEN, (PATT_LEN - NAME_LEN - 57), (PATT_LEN - NAME_LEN - 57) %
-                  4, PATT_LEN - (27 + NAME_LEN + ID_LEN))
+            # print('hi', PATT_LEN, (PATT_LEN - NAME_LEN - 57), (PATT_LEN - NAME_LEN - 57) %
+            #       4, PATT_LEN - (27 + NAME_LEN + ID_LEN), TOTAL_LEN)
+            # if TOTAL_LEN < 15:
+            #     print(abr.read(100))
 
+        # This is a total guess
+        print("Trying", (TOTAL_LEN - 14) % 4, "padding bytes")
+        abr.read((TOTAL_LEN - 14) % 4)
+
+        parse()
 
     elif KEY == b'desc':
-        pass
+        print("""
+            ----
+            DESC
+            ----
+        """)
+
+        print("UNKNOWN DATA!!!:", abr.read(29))
+        print(pascal_string(), read_descriptor())
+
+        print("UNKNOWN DATA!!!:", abr.read(5))
+        read_descriptor()
+        
+        print(pascal_string(), read_descriptor())
+
+        print("-----")
+
+
+
+
+        print(BRUSH_PROPERTY[pascal_string()], read_descriptor())
+        print(BRUSH_PROPERTY[pascal_string()], read_descriptor())
+        print(BRUSH_PROPERTY[pascal_string()], read_descriptor())
+
+
+        print("UNKNOWN DATA!!!:", abr.read(8))
+
+        # https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577411_pgfId-1059252
+        
+
+
+        print("UNKNOWN DATA!!!:", abr.read(4))
+
+        read_descriptor()
+        print("UNKNOWN DATA!!!:", abr.read(4))
+
+
+        print(BRUSH_PROPERTY[abr.read(4)], read_descriptor())
+
+        print(BRUSH_PROPERTY[abr.read(4)], read_descriptor())
+
+        print(pascal_string(), read_descriptor())
+        print(pascal_string(), read_descriptor())
+        print(pascal_string(), read_descriptor())
+        print("UNKNOWN DATA!!!:", abr.read(3))
+
+        print(pascal_string(), read_descriptor())
+        print(pascal_string(), read_descriptor())
+        print(pascal_string(), read_descriptor())
+        print(pascal_string(), read_descriptor())
+        print(pascal_string(), read_descriptor())
+        # print("UNKNOWN DATA!!!:", abr.read(3))
+
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print("UNKNOWN DATA!!!:", abr.read(3))
+
+        # print("UNKNOWN DATA!!!:", abr.read(40))
+
+        # read_descriptor()
+        # print("UNKNOWN DATA!!!:", abr.read(3))
+
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+
+        print("UNKNOWN DATA!!!:", abr.read(40))
+
+
+
     elif KEY == b'phry':
-        pass
+        print("""
+            ----
+            PHRY
+            ----
+        """)
     else:
         exit("ERROR: Unexpected key provided, quitting.")
 

@@ -4,3 +4,5 @@
 ['Photoshop Styles File Format' Document (see 'Pattern' format)](https://web.archive.org/web/20150907015455/http://www.tonton-pixel.com/Photoshop%20Additional%20File%20Formats/styles-file-format.pdf)
 [More detailed pattern specification](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577409_pgfId-1049436)
 [ABR unofficial wiki page](http://fileformats.archiveteam.org/wiki/Photoshop_brush)
+[SonicWall providing a rough explaination of a 'BrshObjc' (largely unhelpful)](https://securitynews.sonicwall.com/xmlpost/adobe-photoshop-abr-bo-may-28-2010/)
+[Some helpful abreviations and units of measurement](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577411_pgfId-1059252)
