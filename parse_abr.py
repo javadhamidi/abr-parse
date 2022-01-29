@@ -54,7 +54,13 @@ def pascal_string():
     str_len = int.from_bytes(abr.read(1), byteorder='big')
     if str_len == 0:
         str_len = 4
-    return abr.read(str_len).decode("utf-8")
+
+    result = abr.read(str_len).decode("utf-8")
+
+    if result in BRUSH_PROPERTY:
+        return BRUSH_PROPERTY[result]
+    
+    return result 
 
 
 def get_double():
@@ -77,7 +83,7 @@ def read_descriptor():
     elif key == b'UntF':
         units = UNITS_UNTF[abr.read(4)]
         result = f"{get_double()} {units} ({desc_type})"
-        if abr.read(4) != b'\x00\x00\x00\x00':
+        if abr.read(3) != b'\x00\x00\x00':
             print("UNKNOWN DATA!!!")
         return result 
 
@@ -271,61 +277,48 @@ def parse():
             ----
         """)
 
-        print("UNKNOWN DATA!!!:", abr.read(29))
-        print(pascal_string(), read_descriptor())
+        print("UNKNOWN DATA!:", abr.read(29))
 
-        print("UNKNOWN DATA!!!:", abr.read(5))
-        read_descriptor()
-        
-        print(pascal_string(), read_descriptor())
-
-        print("-----")
-
-
+        while True:
+            pascal = pascal_string()
+            if pascal == 'Nm  ':
+                print("-----UNKNOWN DATA!:")
+                read_descriptor()
+            else:
+                print(pascal, read_descriptor())
 
 
-        print(BRUSH_PROPERTY[pascal_string()], read_descriptor())
-        print(BRUSH_PROPERTY[pascal_string()], read_descriptor())
-        print(BRUSH_PROPERTY[pascal_string()], read_descriptor())
-
-
-        print("UNKNOWN DATA!!!:", abr.read(8))
-
-        # https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577411_pgfId-1059252
-        
-
-
-        print("UNKNOWN DATA!!!:", abr.read(4))
-
-        read_descriptor()
-        print("UNKNOWN DATA!!!:", abr.read(4))
-
-
-        print(BRUSH_PROPERTY[abr.read(4)], read_descriptor())
-
-        print(BRUSH_PROPERTY[abr.read(4)], read_descriptor())
-
-        print(pascal_string(), read_descriptor())
-        print(pascal_string(), read_descriptor())
-        print(pascal_string(), read_descriptor())
-        print("UNKNOWN DATA!!!:", abr.read(3))
-
-        print(pascal_string(), read_descriptor())
-        print(pascal_string(), read_descriptor())
-        print(pascal_string(), read_descriptor())
-        print(pascal_string(), read_descriptor())
-        print(pascal_string(), read_descriptor())
-        # print("UNKNOWN DATA!!!:", abr.read(3))
-
+        # print("UNKNOWN DATA!:", abr.read(29))
         # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print("UNKNOWN DATA!!!:", abr.read(3))
 
-        # print("UNKNOWN DATA!!!:", abr.read(40))
-
+        # print("----- UNKNOWN DATA!:", abr.read(5))
         # read_descriptor()
-        # print("UNKNOWN DATA!!!:", abr.read(3))
+        
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+
+        # print("-----UNKNOWN DATA!:", abr.read(5))
+        # read_descriptor()
+
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        # print(pascal_string(), read_descriptor())
+        
+        # print("-----UNKNOWN DATA!:", abr.read(5))
+        # read_descriptor()
 
         # print(pascal_string(), read_descriptor())
         # print(pascal_string(), read_descriptor())
@@ -333,7 +326,9 @@ def parse():
         # print(pascal_string(), read_descriptor())
         # print(pascal_string(), read_descriptor())
 
-        print("UNKNOWN DATA!!!:", abr.read(40))
+        # print("UNKNOWN DATA!:", abr.read(40))
+        # print("-----")
+        # print("UNKNOWN DATA!:", abr.read(40))
 
 
 
