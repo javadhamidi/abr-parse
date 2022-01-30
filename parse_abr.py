@@ -1,23 +1,22 @@
 
 from struct import unpack
-from binascii import unhexlify
 
 # https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577411_21585
 KEY_OSTYPE = {
     b'obj ': 'Reference Structure',
     b'Objc': 'Object Descriptor',
-    b'VlLs': 'List structure',
-    b'doub': 'Double structure',
-    b'UntF': 'Unit float structure',
+    b'VlLs': 'List',
+    b'doub': 'Double',
+    b'UntF': 'Unit float',
     b'TEXT': 'String',
     b'enum': 'Enumerated',
     b'long': 'Integer',
     b'comp': 'Large Integer',
-    b'bool': 'Boolean structure',
+    b'bool': 'Boolean',
     b'GlbO': 'GlobalObject (same as Descriptor)',
     b'type': 'Class',
     b'GlbC': 'Class',
-    b'alis': 'Alias structure',
+    b'alis': 'Alias',
     b'tdta': 'Raw Data'
 }
 
@@ -69,39 +68,59 @@ def get_double():
 
 def read_descriptor():
     key = abr.read(4)
+
     desc_type = KEY_OSTYPE[key]
 
-    if key == b'VlLs':  # list
-        list_len = int.from_bytes(abr.read(4), byteorder='big')
-        print("Found list of length", list_len, f"({desc_type})")
-        read_descriptor()
-
-    elif key == b'TEXT':
-        print(unicode_string(int.from_bytes(abr.read(4), byteorder='big')), f"({desc_type})")
-        print("UNKNOWN DATA!!!:", abr.read(3))
+    if key == b'TEXT':
+        result = unicode_string(int.from_bytes(abr.read(4), byteorder='big'))
 
     elif key == b'UntF':
         units = UNITS_UNTF[abr.read(4)]
-        result = f"{get_double()} {units} ({desc_type})"
-        if abr.read(3) != b'\x00\x00\x00':
-            print("UNKNOWN DATA!!!")
-        return result 
+        result = f"{get_double()} {units}"
 
     elif key == b'Objc':
-        print("UNKNOWN DATA!!!:", abr.read(9))
-        print(pascal_string(), f"({desc_type})")
-        print("UNKNOWN DATA!!!:", abr.read(7))
+        if abr.read(9) != b'\x00\x00\x00\x01\x00\x00\x00\x00\x00':
+            print("UNKNOWN DATA!!!")
+        result = pascal_string()
+        result += ", " + str(int.from_bytes(abr.read(4), byteorder='big'))
+    
+    elif key == b'enum':
+        if int.from_bytes(abr.read(4), byteorder='big') > 0:
+            print("HAVEN'T ENCOUNTERED YET!!!")
+        else:
+            typeID = abr.read(4).decode("utf-8")
 
+        if int.from_bytes(abr.read(4), byteorder='big') > 0:
+            print("HAVEN'T ENCOUNTERED YET!!!")
+        else:
+            enum = abr.read(4).decode("utf-8")
+        
+        result = f"({desc_type}), {typeID}, {enum}"
+
+    elif key == b"doub":
+        result = str(get_double())
 
     elif key == b'bool':
-        result = str(ord(abr.read(1)) == True) + f" ({desc_type})"
-        if abr.read(3) != b'\x00\x00\x00':
-            print("UNKNOWN DATA!!!")
-        return result
+        result = str(ord(abr.read(1)) == True)
+
+    elif key == b'long':
+        result = int.from_bytes(abr.read(4), byteorder='big')
 
     else:
-        print("WARNING:", key, "type not handled!")
+        result = "WARNING: " + str(key) + " type not handled!"
 
+
+    result = str(result) + f" ({desc_type})"
+
+    trailing_data = abr.read(3)
+    if trailing_data == b'Obj':
+        abr.seek(-3, 1)
+        result += '\n\n' + read_descriptor()
+    
+    elif trailing_data != b'\x00\x00\x00':
+        print("UNKNOWN DATA!!!!")
+
+    return result
 
 
 
@@ -277,58 +296,34 @@ def parse():
             ----
         """)
 
-        print("UNKNOWN DATA!:", abr.read(29))
+        length = int.from_bytes(abr.read(4), byteorder='big')
+        print("Section length:", length, "bytes (approx.", int(length / 1000), "KB)" )
+
+        print("UNKNOWN DATA!:", abr.read(25))
+
+        pascal = pascal_string()
+        if abr.read(4) == b'VlLs':  # list
+            list_len = int.from_bytes(abr.read(4), byteorder='big')
+            print(pascal, "found list of length " + str(list_len))
+            read_descriptor()
+        else:
+            print("ERROR: Expected list structure!")
+
+        print(abr.tell())
 
         while True:
             pascal = pascal_string()
             if pascal == 'Nm  ':
-                print("-----UNKNOWN DATA!:")
-                read_descriptor()
+                print(abr.tell())
+                print("\n---------------------------")
+                abr.read(4)
+                print(unicode_string(int.from_bytes(abr.read(4), byteorder='big')))
+                abr.read(3)
+                # print(pascal, read_descriptor())
+                print("---------------------------")
+
             else:
                 print(pascal, read_descriptor())
-
-
-        # print("UNKNOWN DATA!:", abr.read(29))
-        # print(pascal_string(), read_descriptor())
-
-        # print("----- UNKNOWN DATA!:", abr.read(5))
-        # read_descriptor()
-        
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-
-        # print("-----UNKNOWN DATA!:", abr.read(5))
-        # read_descriptor()
-
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        
-        # print("-----UNKNOWN DATA!:", abr.read(5))
-        # read_descriptor()
-
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-        # print(pascal_string(), read_descriptor())
-
-        # print("UNKNOWN DATA!:", abr.read(40))
-        # print("-----")
-        # print("UNKNOWN DATA!:", abr.read(40))
 
 
 
