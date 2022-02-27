@@ -1,6 +1,9 @@
 
 from struct import unpack
 
+abr = open("Snatti brushpack.abr", "rb")
+
+
 # https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577411_21585
 KEY_OSTYPE = {
     b'obj ': 'Reference Structure',
@@ -37,7 +40,6 @@ BRUSH_PROPERTY = {
     'Spcn': 'Spacing',
     'Intr': 'Interface'
 }
-
 
 
 def unicode_string(length):
@@ -122,9 +124,6 @@ def read_descriptor():
 
     return result
 
-
-
-abr = open("Snatti brushpack.abr", "rb")
 
 version = int.from_bytes(abr.read(2), byteorder='big')
 subversion = int.from_bytes(abr.read(2), byteorder='big')
@@ -291,13 +290,15 @@ def parse():
 
     elif KEY == b'desc':
         print("""
-            ----
-            DESC
-            ----
+            -----------------
+            BRUSH DESCRIPTORS 
+            -----------------
         """)
 
-        length = int.from_bytes(abr.read(4), byteorder='big')
-        print("Section length:", length, "bytes (approx.", int(length / 1000), "KB)" )
+        total_len = int.from_bytes(abr.read(4), byteorder='big')
+        print("Section length:", total_len, "bytes (approx.", int(total_len / 1000), "KB)" )
+
+        section_start = abr.tell()
 
         print("UNKNOWN DATA!:", abr.read(25))
 
@@ -309,24 +310,19 @@ def parse():
         else:
             print("ERROR: Expected list structure!")
 
-        print(abr.tell())
-
-        while True:
+        while total_len > (abr.tell() - section_start):
             pascal = pascal_string()
             if pascal == 'Nm  ':
-                print(abr.tell())
                 print("\n---------------------------")
                 abr.read(4)
                 print(unicode_string(int.from_bytes(abr.read(4), byteorder='big')))
                 abr.read(3)
                 # print(pascal, read_descriptor())
                 print("---------------------------")
-
             else:
                 print(pascal, read_descriptor())
-
-
-
+            
+        parse()
     elif KEY == b'phry':
         print("""
             ----
