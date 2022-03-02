@@ -1,8 +1,8 @@
 
 from struct import unpack
+import sys
 
-abr = open("Snatti brushpack.abr", "rb")
-
+abr = open(sys.argv[1], "rb")
 
 # https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577411_21585
 KEY_OSTYPE = {
@@ -277,10 +277,6 @@ def parse():
                         abr.read(VMA_LEN - 23)
 
             TOTAL_LEN -= PATT_LEN
-            # print('hi', PATT_LEN, (PATT_LEN - NAME_LEN - 57), (PATT_LEN - NAME_LEN - 57) %
-            #       4, PATT_LEN - (27 + NAME_LEN + ID_LEN), TOTAL_LEN)
-            # if TOTAL_LEN < 15:
-            #     print(abr.read(100))
 
         # This is a total guess
         print("Trying", (TOTAL_LEN - 14) % 4, "padding bytes")
